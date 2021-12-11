@@ -1,0 +1,1254 @@
+---
+title: "IAL 621 Content Analysis for Social Network Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!require("tidyverse")) install.packages("tidyverse")
+library(tidyverse)
+if (!require("tm")) install.packages("tm")
+library(tm)
+if (!require("geckor")) install.packages("geckor")
+library(geckor)
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+if (!require("ggrepel")) install.packages("ggrepel")
+library(ggrepel)
+if (!require("gridExtra")) install.packages("gridExtra")
+library(gridExtra)
+if (!require("ggthemes")) install.packages("ggthemes")
+library(ggthemes)
+if (!require("tidytext")) install.packages("tidytext")
+library(tidytext)
+if (!require("lubridate")) install.packages("lubridate")
+library(lubridate)
+if (!require("widyr")) install.packages("widyr")
+library(widyr)
+if (!require("knitr")) install.packages("knitr")
+library(knitr)
+if (!require("kableExtra")) install.packages("kableExtra")
+library(kableExtra)
+if (!require("formattable")) install.packages("formattable")
+library(formattable)
+if (!require("yarrr")) install.packages("yarrr")
+library(yarrr)
+if (!require("igraph")) install.packages("igraph")
+library(igraph)
+if (!require("ggraph")) install.packages("ggraph")
+library(ggraph)
+
+theme_set(theme_wsj(color ="gray"))
+
+```
+
+Import data
+```{r}
+# read in csv file of tweets
+rawish.data <- read.csv('fantomhistdata.csv')
+```
+
+Clean data
+```{r}
+# common artifacts that remain after cleaning
+other.words <- c("rt", "amp","htt")
+tweets.data <- rawish.data
+
+# remove all urls
+tweets.data$text <- gsub("(s?)(f|ht)tp(s?)://\\S+\\b", "", tweets.data$text)
+
+
+# clean data
+tweets.data$text <- tweets.data$text %>%
+  removeNumbers() %>%
+  tolower() %>%
+  iconv(from = 'UTF-8', to = 'ASCII//TRANSLIT') %>% #Remove accents, foreign language items
+  removeWords(stopwords("SMART")) %>%
+  removeWords(other.words) %>%
+  stemDocument() %>%
+  stripWhitespace()
+
+tweets.data$text[tweets.data$text == "NA"] <- NA
+
+tweets.data <- tweets.data %>%
+  drop_na(text)
+
+```
+
+
+Separate hashtags out
+```{r}
+#create a list of text box names
+text_columns <- seq(1, 140)
+text_columns <- text_columns %>%
+  as.character()
+
+#Duplicate the text column so we can keep the text
+tweets.data <- tweets.data %>%
+  mutate(hashtags = text)
+
+#Separate the text by word
+tweets.data <- tweets.data %>%
+  separate(hashtags, into = text_columns, sep = " ")
+
+#Create a function to eliminate the extra columns we didn't need to add
+is.col.na <- function(n, vars = peek_vars(fn = "is.col.na")) {
+  sum(is.na(n)) < 61788
+}
+
+#Remove the extra columns
+tweets.data <- tweets.data %>%
+  select(where(is.col.na))
+
+## Regexpressions to identify hashtags
+hash.regexp <- "#[[:alpha:]][[:alnum:]_]+"
+
+#extract the hashes
+tweets.data$`1` <- str_extract(tweets.data$`1`, hash.regexp)
+tweets.data$`2` <- str_extract(tweets.data$`2`, hash.regexp)
+tweets.data$`3` <- str_extract(tweets.data$`3`, hash.regexp)
+tweets.data$`4` <- str_extract(tweets.data$`4`, hash.regexp)
+tweets.data$`5` <- str_extract(tweets.data$`5`, hash.regexp)
+tweets.data$`6` <- str_extract(tweets.data$`6`, hash.regexp)
+tweets.data$`7` <- str_extract(tweets.data$`7`, hash.regexp)
+tweets.data$`8` <- str_extract(tweets.data$`8`, hash.regexp)
+tweets.data$`9` <- str_extract(tweets.data$`9`, hash.regexp)
+tweets.data$`10` <- str_extract(tweets.data$`10`, hash.regexp)
+tweets.data$`11` <- str_extract(tweets.data$`11`, hash.regexp)
+tweets.data$`12` <- str_extract(tweets.data$`12`, hash.regexp)
+tweets.data$`13` <- str_extract(tweets.data$`13`, hash.regexp)
+tweets.data$`14` <- str_extract(tweets.data$`14`, hash.regexp)
+tweets.data$`15` <- str_extract(tweets.data$`15`, hash.regexp)
+tweets.data$`16` <- str_extract(tweets.data$`16`, hash.regexp)
+tweets.data$`17` <- str_extract(tweets.data$`17`, hash.regexp)
+tweets.data$`18` <- str_extract(tweets.data$`18`, hash.regexp)
+tweets.data$`19` <- str_extract(tweets.data$`19`, hash.regexp)
+tweets.data$`20` <- str_extract(tweets.data$`20`, hash.regexp)
+tweets.data$`21` <- str_extract(tweets.data$`21`, hash.regexp)
+tweets.data$`22` <- str_extract(tweets.data$`22`, hash.regexp)
+tweets.data$`23` <- str_extract(tweets.data$`23`, hash.regexp)
+tweets.data$`24` <- str_extract(tweets.data$`24`, hash.regexp)
+tweets.data$`25` <- str_extract(tweets.data$`25`, hash.regexp)
+tweets.data$`26` <- str_extract(tweets.data$`26`, hash.regexp)
+tweets.data$`27` <- str_extract(tweets.data$`27`, hash.regexp)
+tweets.data$`28` <- str_extract(tweets.data$`28`, hash.regexp)
+tweets.data$`29` <- str_extract(tweets.data$`29`, hash.regexp)
+tweets.data$`30` <- str_extract(tweets.data$`30`, hash.regexp)
+tweets.data$`31` <- str_extract(tweets.data$`31`, hash.regexp)
+tweets.data$`32` <- str_extract(tweets.data$`32`, hash.regexp)
+tweets.data$`33` <- str_extract(tweets.data$`33`, hash.regexp)
+tweets.data$`34` <- str_extract(tweets.data$`34`, hash.regexp)
+tweets.data$`35` <- str_extract(tweets.data$`35`, hash.regexp)
+tweets.data$`36` <- str_extract(tweets.data$`36`, hash.regexp)
+
+```
+
+Clear out the NA values and combine into one column
+```{r}
+for (i in 17:52) {
+  tweets.data[i][is.na(tweets.data[i])] <- " "
+}
+
+tweets.data$hashes <- str_c(tweets.data$`1`, 
+tweets.data$`2`, tweets.data$`3`, tweets.data$`4`, tweets.data$`5`, tweets.data$`6`, tweets.data$`7`, tweets.data$`8`, tweets.data$`9`, tweets.data$`10`,tweets.data$`11`,tweets.data$`12`, tweets.data$`13`, tweets.data$`14`, tweets.data$`15`, tweets.data$`16`, tweets.data$`17`, tweets.data$`18`, tweets.data$`19`, tweets.data$`20`, tweets.data$`21`, tweets.data$`22`, 
+tweets.data$`23`, tweets.data$`24`, tweets.data$`25`, tweets.data$`26`, tweets.data$`27`, tweets.data$`28`, tweets.data$`29`, tweets.data$`30`, tweets.data$`31`, tweets.data$`32`, tweets.data$`33`, tweets.data$`34`, tweets.data$`35`, tweets.data$`36`, 
+sep = " ")
+
+tweets.data <- tweets.data %>%
+  select(!(`1`:`36`))
+
+tweets.data$hashes <- tweets.data$hashes %>%
+  stripWhitespace()
+
+
+```
+
+
+Separate $ hashtags out
+```{r}
+#create a list of text box names
+text.columns <- seq(1, 36)
+text.columns <- text.columns %>%
+  as.character()
+
+#Duplicate the text column so we can keep the text
+tweets.data <- tweets.data %>%
+  mutate(hashtags = text)
+
+#Separate the text by word
+tweets.data <- tweets.data %>%
+  separate(hashtags, into = text.columns, sep = " ")
+
+
+## Regexpressions to identify $ hashtags
+currency.hash.regexp <- "\\$[[:alpha:]][[:alnum:]_]+"
+
+## Regexpressions to identify @mentions
+user.regexp <- "@[[:alpha:]][[:alnum:]_]+"
+
+
+#extract the hashes
+tweets.data$`1` <- str_extract(tweets.data$`1`, currency.hash.regexp)
+tweets.data$`2` <- str_extract(tweets.data$`2`, currency.hash.regexp)
+tweets.data$`3` <- str_extract(tweets.data$`3`, currency.hash.regexp)
+tweets.data$`4` <- str_extract(tweets.data$`4`, currency.hash.regexp)
+tweets.data$`5` <- str_extract(tweets.data$`5`, currency.hash.regexp)
+tweets.data$`6` <- str_extract(tweets.data$`6`, currency.hash.regexp)
+tweets.data$`7` <- str_extract(tweets.data$`7`, currency.hash.regexp)
+tweets.data$`8` <- str_extract(tweets.data$`8`, currency.hash.regexp)
+tweets.data$`9` <- str_extract(tweets.data$`9`, currency.hash.regexp)
+tweets.data$`10` <- str_extract(tweets.data$`10`, currency.hash.regexp)
+tweets.data$`11` <- str_extract(tweets.data$`11`, currency.hash.regexp)
+tweets.data$`12` <- str_extract(tweets.data$`12`, currency.hash.regexp)
+tweets.data$`13` <- str_extract(tweets.data$`13`, currency.hash.regexp)
+tweets.data$`14` <- str_extract(tweets.data$`14`, currency.hash.regexp)
+tweets.data$`15` <- str_extract(tweets.data$`15`, currency.hash.regexp)
+tweets.data$`16` <- str_extract(tweets.data$`16`, currency.hash.regexp)
+tweets.data$`17` <- str_extract(tweets.data$`17`, currency.hash.regexp)
+tweets.data$`18` <- str_extract(tweets.data$`18`, currency.hash.regexp)
+tweets.data$`19` <- str_extract(tweets.data$`19`, currency.hash.regexp)
+tweets.data$`20` <- str_extract(tweets.data$`20`, currency.hash.regexp)
+tweets.data$`21` <- str_extract(tweets.data$`21`, currency.hash.regexp)
+tweets.data$`22` <- str_extract(tweets.data$`22`, currency.hash.regexp)
+tweets.data$`23` <- str_extract(tweets.data$`23`, currency.hash.regexp)
+tweets.data$`24` <- str_extract(tweets.data$`24`, currency.hash.regexp)
+tweets.data$`25` <- str_extract(tweets.data$`25`, currency.hash.regexp)
+tweets.data$`26` <- str_extract(tweets.data$`26`, currency.hash.regexp)
+tweets.data$`27` <- str_extract(tweets.data$`27`, currency.hash.regexp)
+tweets.data$`28` <- str_extract(tweets.data$`28`, currency.hash.regexp)
+tweets.data$`29` <- str_extract(tweets.data$`29`, currency.hash.regexp)
+tweets.data$`30` <- str_extract(tweets.data$`30`, currency.hash.regexp)
+tweets.data$`31` <- str_extract(tweets.data$`31`, currency.hash.regexp)
+tweets.data$`32` <- str_extract(tweets.data$`32`, currency.hash.regexp)
+tweets.data$`33` <- str_extract(tweets.data$`33`, currency.hash.regexp)
+tweets.data$`34` <- str_extract(tweets.data$`34`, currency.hash.regexp)
+tweets.data$`35` <- str_extract(tweets.data$`35`, currency.hash.regexp)
+tweets.data$`36` <- str_extract(tweets.data$`36`, currency.hash.regexp)
+
+```
+
+Clear NAs, recombine into one column
+```{r}
+for (i in 18:53) {
+  tweets.data[i][is.na(tweets.data[i])] <- " "
+}
+
+tweets.data$bills <- str_c(tweets.data$`1`, 
+tweets.data$`2`, tweets.data$`3`, tweets.data$`4`, tweets.data$`5`, tweets.data$`6`, tweets.data$`7`, tweets.data$`8`, tweets.data$`9`, tweets.data$`10`,tweets.data$`11`,tweets.data$`12`, tweets.data$`13`, tweets.data$`14`, tweets.data$`15`, tweets.data$`16`, tweets.data$`17`, tweets.data$`18`, tweets.data$`19`, tweets.data$`20`, tweets.data$`21`, tweets.data$`22`, 
+tweets.data$`23`, tweets.data$`24`, tweets.data$`25`, tweets.data$`26`, tweets.data$`27`, tweets.data$`28`, tweets.data$`29`, tweets.data$`30`, tweets.data$`31`, tweets.data$`32`, tweets.data$`33`, tweets.data$`34`, tweets.data$`35`, tweets.data$`36`, 
+sep = " ")
+
+tweets.data <- tweets.data %>%
+  select(!(`1`:`36`))
+
+tweets.data$bills <- tweets.data$bills %>%
+  stripWhitespace()
+
+tweets.data$tags <- str_c(tweets.data$hashes, tweets.data$bills, sep = " ")
+
+```
+
+Clean blank space, create NA
+```{r}
+#clear blanks
+tweets.data$hashes[tweets.data$hashes == " "] <- NA
+tweets.data$hashes[tweets.data$hashes == ""] <- NA
+tweets.data$hashes[tweets.data$hashes == "[:blank:]"] <- NA
+tweets.data$bills[tweets.data$bills == " "] <- NA
+tweets.data$bills[tweets.data$bills == ""] <- NA
+tweets.data$bills[tweets.data$bills == "[:blank:]"] <- NA
+
+tweets.data$tags <- tweets.data$tags %>%
+  stripWhitespace()
+
+tweets.data$tags[tweets.data$tags == " "] <- NA
+tweets.data$tags[tweets.data$tags == ""] <- NA
+tweets.data$tags[tweets.data$tags == "[:blank:]"] <- NA
+
+```
+
+
+Let's clean the time data next
+```{r}
+tweets.data <- tweets.data %>%
+  separate(tweet.datetime, c(NA, "tweet.datetime"), sep = '[[:blank:]]', extra = "merge") %>%
+  separate(tweet.datetime, c("tweet.datetime", NA), sep = "\\+") %>%
+  separate(tweet.datetime, c("month", "day", "time"), sep = " ") %>%
+  unite("date", c(month, day)) %>%
+  mutate(date = paste(date, "2021", sep = "_")) %>%
+  unite("tweet.datetime", c(date, time))
+
+# uses lubridate package to convert UTC datetime format
+tweets.data$tweet.datetime <- mdy_hms(tweets.data$tweet.datetime, tz = NULL)
+
+tweets.data$tweet.rounddatetime <- round_date(tweets.data$tweet.datetime, "5 mins")
+
+```
+
+Write all of this to a new CSV file
+```{r}
+write.csv(tweets.data, file="fantomhistdataclean.csv")
+```
+
+
+Start by seeing which tags are most common
+```{r}
+# Tokenize the text with one word per token so we're in tidytext format
+tags.data <- tweets.data %>%
+  unnest_tokens(word, tags) %>%
+  drop_na(word)
+
+# Glance at the most common words
+tags.data %>%
+  count(word, sort = TRUE)
+```
+
+Visualize most common tags
+
+```{r}
+
+#Visual Most common Words
+tags.data %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 500) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) +
+  ggtitle("Occurences of Hashtags")
+```
+
+Let's look at just the crypto tags
+```{r}
+# Tokenize the text with one word per token so we're in tidytext format
+curr.data <- tweets.data %>%
+  unnest_tokens(word, bills) %>%
+  drop_na(word)
+
+# Glance at the most common words
+curr.data %>%
+  count(word, sort = TRUE)
+```
+
+
+```{r}
+
+#Visual Most common Words
+curr.data %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 200) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) +
+  ggtitle("Occurences of $ Tags")
+```
+
+What about time series analysis?
+```{r}
+
+tweets.date <- as.POSIXct(tweets.data$tweet.datetime, format = "%a %b %e %T %z %Y")
+
+## Index each tweet by the day of its creation
+hour.index = cut(tweets.date, breaks = "hour")
+
+## Count how many tweets occurred on each hour
+tmp <- sapply(levels(hour.index),
+  function(x) length(which(hour.index==x)))
+
+## Isolate the tweet frequencies
+counts <- as.vector(tmp)
+
+## Plot tweet frequency by hour
+plot(1:length(counts), counts, type="o", lwd = 2,
+     xlab = "hour", ylab = "Frequency",
+     main = "Tweet Frequency As A Function Of Hours")
+grid(col = "darkgray")
+```
+
+```{r}
+tweets.data$tweet.roundhour <- round_date(tweets.data$tweet.datetime, "hour")
+tweets.data$tweet.roundday <- round_date(tweets.data$tweet.datetime, "day")
+
+# Tokenize the text with one word per token so we're in tidytext format
+curr.data <- tweets.data %>%
+  unnest_tokens(word, bills) %>%
+  drop_na(word)
+
+curr.data %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of $ Tags")
+
+```
+
+Let's filter this and see if there's anything interesting
+```{r}
+curr.data %>%
+  filter(word == "ftm") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of FTM $ Tags")
+```
+```{r}
+ftm.price <- coin_history_range(
+  coin_id = "fantom", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(ftm.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of FTM")
+
+```
+Let's look at sentiment analysis
+```{r}
+#Loughran Lexicon is used for economic data
+
+#First, let's filter to just the ftm tweets, then let's look at the text
+ftm.sentiment <- curr.data %>%
+  filter(word == "ftm") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Get negative sentiments for loughran lexicon
+loughran.negative <- get_sentiments("loughran") %>%
+  filter(sentiment == "negative")
+
+# count the top loughran lexicon negatives
+negative <- ftm.sentiment %>%
+  inner_join(loughran.negative) %>%
+  count(word, sort = TRUE)
+
+
+#The following words most contribute to negative sentiments
+negative
+```
+
+
+```{r}
+# Assign and calculate sentiment data
+ftm.sentiment.full <- ftm.sentiment %>%
+  inner_join(get_sentiments("loughran")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(ftm.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of FTM Over Time")
+```
+
+What words contribute to positive and negative?
+```{r}
+
+#Visual Most common Words
+negative %>%
+  filter(n > 25) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) +
+  ggtitle("Most Negative FTM Words")
+```
+Positive FTM words
+```{r}
+# Get negative sentiments for loughran lexicon
+loughran.positive <- get_sentiments("loughran") %>%
+  filter(sentiment == "positive")
+
+# count the top loughran lexicon negatives
+positive <- ftm.sentiment %>%
+  inner_join(loughran.positive) %>%
+  count(word, sort = TRUE)
+
+
+#Visual Most common Words
+positive %>%
+  filter(n > 25) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) +
+  ggtitle("Most Positive FTM Words")
+```
+
+```{r}
+curr.data %>%
+  filter(word == "boo") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of BOO Tags")
+```
+
+
+
+
+```{r}
+boo.price <- coin_history_range(
+  coin_id = "spookyswap", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(boo.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of BOO")
+
+```
+
+
+```{r}
+
+#First, let's filter to just the boo tweets, then let's look at the text
+boo.sentiment <- curr.data %>%
+  filter(word == "boo") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data
+boo.sentiment.full <- boo.sentiment %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(boo.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of BOO Over Time")
+```
+
+
+
+```{r}
+curr.data %>%
+  filter(word == "spirit") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of Spirit Tags")
+```
+
+
+```{r}
+spirit.price <- coin_history_range(
+  coin_id = "spiritswap", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(spirit.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of SPIRIT")
+
+```
+
+
+```{r}
+
+#First, let's filter to just the spirit tweets, then let's look at the text
+spirit.sentiment <- curr.data %>%
+  filter(word == "spirit") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data
+spirit.sentiment.full <- spirit.sentiment %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(spirit.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of SPIRIT Over Time")
+```
+
+
+```{r}
+curr.data %>%
+  filter(word == "cns") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of CNS Tags")
+```
+
+
+```{r}
+cns.price <- coin_history_range(
+  coin_id = "centric-cash", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(cns.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of CNS")
+
+```
+
+
+```{r}
+
+#First, let's filter to just the cns tweets, then let's look at the text
+cns.sentiment <- curr.data %>%
+  filter(word == "cns") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data, using bing because loughran wouldn't work
+cns.sentiment.full <- cns.sentiment %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(cns.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of CNS Over Time")
+```
+
+
+```{r}
+curr.data %>%
+  filter(word == "gm") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of GM Tags")
+```
+
+
+```{r}
+gm.price <- coin_history_range(
+  coin_id = "gm", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(gm.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of GM")
+
+```
+
+
+```{r}
+
+#First, let's filter to just the gm tweets, then let's look at the text
+gm.sentiment <- curr.data %>%
+  filter(word == "gm") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data
+gm.sentiment.full <- gm.sentiment %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(gm.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of GM Over Time")
+```
+
+```{r}
+curr.data %>%
+  filter(word == "hec") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of HEC Tags")
+```
+
+```{r}
+hec.price <- coin_history_range(
+  coin_id = "hector-dao", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(hec.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of HEC")
+
+```
+
+
+```{r}
+
+#First, let's filter to just the hec tweets, then let's look at the text
+hec.sentiment <- curr.data %>%
+  filter(word == "hec") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data
+hec.sentiment.full <- hec.sentiment %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(hec.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of HEC Over Time")
+```
+
+
+```{r}
+curr.data %>%
+  filter(word == "spa") %>%
+  group_by(tweet.roundhour) %>%
+  count(word, sort = TRUE) %>%
+  ggplot(aes(tweet.roundhour, n)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Frequency of SPA Tags")
+```
+
+spartacus
+
+```{r}
+spa.price <- coin_history_range(
+  coin_id = "spartacus", 
+  vs_currency = "usd",
+  from = as.POSIXct("2021-11-05 18:10:00"),
+  to = as.POSIXct("2021-11-14 18:04:00")
+)
+
+  ggplot(spa.price, aes(timestamp, price)) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_line() +
+  scale_fill_viridis_d() +
+  ggtitle("Price of SPA")
+
+```
+
+
+```{r}
+
+#First, let's filter to just the spa tweets, then let's look at the text
+spa.sentiment <- curr.data %>%
+  filter(word == "spa") %>%
+  mutate(tag = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data
+spa.sentiment.full <- spa.sentiment %>%
+  inner_join(get_sentiments("loughran")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(spa.sentiment.full, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of SPA Over Time")
+```
+
+
+
+```{r}
+
+# remove additional words
+fantom.words <- c("fantom", "fantom_spac", "project", "crypto", "follow", "retweet", "winner", "memecontest",
+                  "opera", "contest", "token", "defi", "fantomfdn", "ftm", "airdrop", "islandboys_ftm", "islandboy")
+
+deep.data <- tweets.data
+deep.data$text <- removeWords(deep.data$text, fantom.words)
+
+
+# Tokenize the text with one word per token so we're in tidytext format
+tokenized.deep.data <- deep.data %>%
+  unnest_tokens(word, text)
+
+tokenized.deep.data %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 2000) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) +
+  ggtitle("Occurences of Words")
+
+```
+
+This is just so noisy, it's really hard to determine anything from it. Let's try bigrams?
+
+```{r}
+
+#Load stopwords
+data(stop_words)
+
+#Create custom stopwords list
+
+lexicon <-  rep("custom", times=length(other.words))
+my.stop.words <- data.frame(other.words, lexicon)
+names(my.stop.words) <- c("word", "lexicon")
+
+# Add the dataframe to stop_words df that exists in the library stopwords
+stop_words <-  bind_rows(stop_words, my.stop.words)
+
+##Reset and clean the data
+bigram.data <- rawish.data
+
+# remove all urls
+bigram.data$text <- gsub("(s?)(f|ht)tp(s?)://\\S+\\b", "", bigram.data$text)
+
+
+# clean data
+bigram.data$text <- bigram.data$text %>%
+  removeNumbers() %>%
+  tolower() %>%
+  iconv(from = 'UTF-8', to = 'ASCII//TRANSLIT') %>%
+  removeWords(other.words) %>%
+  stemDocument() %>%
+  stripWhitespace()
+
+bigram.data$text[bigram.data$text == "NA"] <- NA
+
+bigram.data <- bigram.data %>%
+  drop_na(text)
+
+# removes carrige returns and new lines from text
+bigram.data$text <- gsub("\r?\n|\r", " ", bigram.data$text)
+
+
+# Tokenize the text with two word per token so we're in tidytext format
+bigram.data <- bigram.data %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigrams.separated <- bigram.data %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams.filtered <- bigrams.separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  drop_na()
+
+# new bigram counts:
+bigram.counts <- bigrams.filtered %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram.counts
+```
+
+```{r}
+#Visual Most common Bigrams
+bigrams.filtered %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  count(bigram, sort = TRUE)%>%
+  filter(n > 40) %>%
+  mutate(bigram = reorder(bigram, n)) %>%
+  ggplot(aes(n, bigram)) +
+  geom_col() +
+  labs(y = NULL) +
+  ggtitle("Occurences of Bigrams")
+```
+
+Still a lot of noise and not a lot of insight. Would tf-idf be more helpful?
+```{r}
+
+tokenized.data <- tweets.data %>%
+  unnest_tokens(word, text)
+
+#generate word counts per user
+user.word.counts <- tokenized.data %>%
+  count(screen.name, word, sort = TRUE)
+
+#use bind_tf_idf to get tf, idf, and tf_idf
+user.tf.idf <- user.word.counts %>%
+  bind_tf_idf(word, screen.name, n)
+
+
+user.tf.idf %>%
+  filter(n > 1) %>%
+  filter(n < 50) %>%
+  slice_max(tf_idf, n = 20) %>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf))) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "tf-idf", y = NULL) +
+  ggtitle("Words with Highest tf-idf")
+
+```
+
+Gonna go with not really... 
+Maybe we could compare sentiment analysis over time?
+
+```{r}
+#First, create the data
+sentiment <- tweets.data %>%
+  unnest_tokens(word, text) %>%
+  drop_na(word)
+
+# Assign and calculate sentiment data
+sentiment.all <- sentiment %>%
+  inner_join(get_sentiments("loughran")) %>%
+  count(sentiment, tweet.roundhour) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# Sentiment of the podcast from day 1 to ~current
+ggplot(sentiment.all, aes(tweet.roundhour, sentiment, fill = ifelse(sentiment >= 0, "#440154", "#fde725"))) +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(size = 28),
+        legend.position = "none") +
+  geom_col() +
+  scale_fill_viridis_d() +
+  ggtitle("Sentiment of Tweets Over Time")
+```
+
+
+```{r}
+# Tokenize the text with one word per token so we're in tidytext format
+tags.data <- tweets.data %>%
+  unnest_tokens(word, tags) %>%
+  mutate(hashtags = word) %>%
+  select(!word) %>%
+  unnest_tokens(word, text)
+
+
+word.summary <- tags.data %>%
+  filter(hashtags == "boo" | hashtags == "spirit") %>%
+  group_by(hashtags) %>%
+  mutate(word_count = n_distinct(word)) %>%
+  select(X, tweet.roundday, hashtags, word_count) %>%
+  distinct() %>% #To obtain one record per tweet
+  ungroup()
+
+pirateplot(formula = word_count ~ tweet.roundday + hashtags,
+           data = word.summary,
+           xlab = NULL,
+           main = "Lexical Diversity Per Tag",
+           pal = "google",
+           point.o = .2,
+           avg.line.o = 1,
+           theme = 0,
+           point.pch = 16,
+           point.cex = 1.5,
+           jitter.val = .1,
+           cex.lab = .9, cex.names = .7)
+
+```
+
+
+```{r}
+tags.bing <- tags.data %>%
+  inner_join(get_sentiments("bing"))
+tags.nrc <- tags.data %>%
+  inner_join(get_sentiments("nrc"))
+tags.nrc.sub <- tags.data %>%
+  inner_join(get_sentiments("nrc")) %>%
+  filter(!sentiment %in% c("positive", "negative"))
+
+focus.tags <- c("ftm", "boo", "spirit", "spa", "hec")
+plot.tags.nrc <- tags.nrc %>%
+  filter(hashtags %in% focus.tags) %>%
+  group_by(sentiment) %>%
+  count(word, sort = TRUE) %>%
+  arrange(desc(n)) %>%
+  slice(seq_len(8)) %>% 
+  ungroup()
+
+theme_lyrics <- function(aticks = element_blank(),
+                         pgminor = element_blank(),
+                         lt = element_blank(),
+                         lp = "none")
+{
+  theme(plot.title = element_text(hjust = 0.5), #Center the title
+        axis.ticks = aticks, #Set axis ticks to on or off
+        panel.grid.minor = pgminor, #Turn the minor grid lines on or off
+        legend.title = lt, #Turn the legend title on or off
+        legend.position = lp) #Turn the legend on or off
+}
+
+
+plot.tags.nrc %>%
+  #Set `y = 1` to just plot one variable and use word as the label
+  ggplot(aes(word, 1, label = word, fill = sentiment )) +
+  #You want the words, not the points
+  geom_point(color = "transparent") +
+  #Make sure the labels don't overlap
+  geom_label_repel(force = 1,nudge_y = .5,  
+                   direction = "y",
+                   box.padding = 0.04,
+                   segment.color = "transparent",
+                   size = 3) +
+  facet_grid(~sentiment) +
+  theme_lyrics() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(),
+        axis.title.x = element_text(size = 6),
+        panel.grid = element_blank(), panel.background = element_blank(),
+        panel.border = element_rect("lightgray", fill = NA),
+        strip.text.x = element_text(size = 9)) +
+  xlab(NULL) + ylab(NULL) +
+  ggtitle("Sentiment around Tweets with Specific Tags") +
+  coord_flip()
+```
+
+
+```{r}
+
+tags.nrc %>%
+  group_by(sentiment) %>%
+  summarise(word_count = n()) %>%
+  ungroup() %>%
+  mutate(sentiment = reorder(sentiment, word_count)) %>%
+  ggplot(aes(sentiment, word_count, fill = -word_count)) +
+  geom_col() +
+  guides(fill = FALSE) +
+  theme_minimal() + theme_lyrics() +
+  labs(x = NULL, y = "Word Count") +
+  ggtitle("Fantom NRC Sentiment") +
+  coord_flip()
+
+```
+```{r}
+
+tags.data %>%
+  count(word) %>%
+  filter(n > 750) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  ggplot(aes(x = word, fill = sentiment)) +
+  facet_grid(~sentiment) +
+  geom_bar() + #Create a bar for each word per sentiment
+  theme_lyrics() +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_blank()) + #Place the words on the y-axis
+  xlab(NULL) + ylab(NULL) +
+  ggtitle("Top Fantom Sentiment Words") +
+  coord_flip()
+
+```
+
+
+Using Quanteda
+```{r}
+
+detach("package:tidytext", unload=TRUE)
+
+if (!require("quanteda")) install.packages("quanteda")
+library(quanteda)
+if (!require("quanteda.textplots")) install.packages("quanteda.textplots")
+library(quanteda.textplots)
+if (!require("quanteda.textmodels")) install.packages("quanteda.textmodels")
+library("quanteda.textmodels")
+if (!require("quanteda.textstats")) install.packages("quanteda.textstats")
+library("quanteda.textstats")
+
+```
+
+Start by creating a DFM
+```{r}
+
+#Convert to quanteda corpus
+tweets.corpus <- corpus(tweets.data)
+
+#Convert to a DFM
+tweet.dfm <- tokens(tweets.corpus, remove_punct = TRUE) %>%
+    dfm()
+
+head(tweet.dfm)
+
+```
+
+Extract most common hashtags
+```{r}
+tag.dfm <- dfm_select(tweet.dfm, pattern = "#*")
+toptag <- names(topfeatures(tag.dfm, 50))
+head(toptag)
+```
+
+Build a feature occurence matrix of hashtags
+```{r}
+tag.fcm <- fcm(tag.dfm)
+head(tag.fcm)
+```
+
+Visualize
+```{r}
+topgat.fcm <- fcm_select(tag.fcm, pattern = toptag)
+textplot_network(topgat.fcm, min_freq = 0.1, edge_alpha = 0.8, edge_size = 2)
+```
+
+Wordcloud of top hashtags
+```{r}
+set.seed(100)
+
+textplot_wordcloud(tag.dfm, max_words = 100)
+```
+
+Fantom and memecontest are the most common by a lot... What changes if we take these tags out?
+```{r}
+
+#Try without #Fantom
+nofantom.dfm <-  tokens(tweets.corpus, remove_punct = TRUE) %>%
+  tokens_remove(pattern = "#fantom") %>%
+  tokens_remove(pattern = "#memecontest") %>%
+    dfm() %>%
+  dfm_select( pattern = "#*")
+
+
+textplot_wordcloud(nofantom.dfm, max_words = 100)
+```
+
+```{r}
+
+tweet.dfm %>% 
+  textstat_frequency(n = 15) %>% 
+  ggplot(aes(x = reorder(feature, frequency), y = frequency)) +
+  geom_point() +
+  coord_flip() +
+  labs(x = NULL, y = "Frequency")
+```
+
+
+Most frequently occuring usernames
+```{r}
+
+user.dfm <- dfm_select(tweet.dfm, pattern = "@*")
+topuser <- names(topfeatures(user.dfm, 50))
+head(topuser)
+
+```
+
+Co-occurence matrix of usernames
+```{r}
+user.fcm <- fcm(user.dfm)
+head(user.fcm)
+```
+
+Visualize
+```{r}
+
+user.fcm <- fcm_select(user.fcm, pattern = topuser)
+textplot_network(user.fcm, min_freq = 0.1, edge_color = "orange", edge_alpha = 0.8, edge_size = 5)
+
+```
+
